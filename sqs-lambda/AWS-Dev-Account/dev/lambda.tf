@@ -17,13 +17,17 @@ resource "aws_iam_role" "iam_for_lambda" {
 }
 EOF
 }
-
+data "archive_file" "lambda_zip" {
+    type        = "zip"
+    source_dir  = "../lambda-deploy-zip"
+    output_path = "lambda-deploy.zip"
+}
 resource "aws_lambda_function" "lambda_function" {
   filename                       = "../lambda-deploy-zip/lambda-deploy.zip"
   function_name                  = "${var.lambda_function_name}-${var.env}-env"
   role                           = "${aws_iam_role.iam_for_lambda.arn}"
   handler                        = "${var.lambda_handler_name}"
-  source_code_hash               = "${base64sha256(file("../lambda-deploy-zip/lambda-deploy.zip"))}"
+  source_code_hash               = "${data.archive_file.lambda_zip.output_base64sha256}"
   runtime                        = "${var.lambda_runtime}"
   description                    = "Lambda function for uploading manifests to ${var.env}-env"
   memory_size                    = "${var.lambda_memory_size}"
@@ -82,7 +86,7 @@ resource "aws_iam_policy" "lambda_logging" {
         "sqs:SetQueueAttributes"
       ],
       "Effect": "Allow",
-      "Resource": "${aws_sqs_queue.sqs-queue.arn}"
+      "Resource": "[${aws_sqs_queue.sqs-queue.arn},${aws_sqs_queue.sqs-queue-two.arn},${aws_sqs_queue.sqs-queue-three.arn}]"
     }
   ]
 }
